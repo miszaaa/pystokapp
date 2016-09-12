@@ -1,0 +1,75 @@
+version: '2'
+
+services:
+
+  nginx:
+    image: nginx
+    restart: always
+    volumes:
+      - /home/mwawrzyniak/.virtualenvs/pystok-docker/pystokapp/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "8989:80"
+    volumes_from:
+      - backend
+    links:
+      - backend
+
+  backend:
+    image: msitespl/pystokapp
+    volumes:
+      - /home/mwawrzyniak/.virtualenvs/pystok-docker/pystokapp/:/code/
+      - /home/mwawrzyniak/tmp/media/:/code/media/
+      - /code/static_all/
+    links:
+      - postgres:postgres
+      - memcached:memcached
+      - redisdb:redis
+      - elastic:elastic
+    restart: always
+
+  celerycam:
+    image: msitespl/pystokapp
+    links:
+      - redisdb:redis
+    entrypoint: python /code/manage.py celerycam
+    restart: always
+
+  celery:
+    image: msitespl/pystokapp
+    entrypoint: celery worker -A pystokapp --loglevel=INFO -c 2
+    volumes_from:
+        - backend
+    links:
+      - redisdb:redis
+      - postgres:postgres
+    environment:
+      - C_FORCE_ROOT=1
+    restart: always
+
+  redisdb:
+    image: redis
+    restart: always
+
+  postgres:
+    restart: always
+    image: mdillon/postgis:latest
+    ports:
+      - "5436:5432"
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword1
+    volumes:
+      - /var/lib/postgresql
+
+  memcached:
+    image: memcached
+    restart: always
+
+  elastic:
+    # http://localhost:9205/_plugin/kopf/#!/cluster
+    restart: always
+    image: msitespl/elastic_with_kopf
+    ports:
+      - "9205:9200"
+      - "9305:9300"
+    environment:
+      - ES_HEAP_SIZE=2g
