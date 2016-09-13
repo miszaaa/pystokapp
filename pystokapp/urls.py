@@ -17,4 +17,6 @@ from django.contrib import admin
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
+    url(r'^sample_view/$', 'apps.sample_app.views.sample_view'),
+    url(r'^elastic_test/$', 'apps.sample_app.views.elastic_test'),
 ]
